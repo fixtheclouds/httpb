@@ -15,11 +15,12 @@ def print_results(results)
     puts 'Nothing to print...'
     return
   end
+  durations = results.map(&:first)
 
-  puts "Bechmarking HTTP GET to #{URL}"
-  puts "avg #{results.sum(0.0) / results.size}"
-  puts "min #{results.min}"
-  puts "max #{results.max}"
+  puts "\nBechmarking HTTP GET to #{URL}"
+  puts "avg #{durations.sum(0.0) / durations.size}"
+  puts "min #{durations.min}"
+  puts "max #{durations.max}"
   puts "#{results.count} requests total"
 end
 
@@ -28,6 +29,6 @@ while true do
   response = Net::HTTP.get_response(URL)
   response.body
   diff = Time.now - time
-  puts "Fetched in #{diff} seconds"
-  results << diff
+  puts "fetched in #{diff} seconds, code: #{response.code}"
+  results << [diff, response.code]
 end
