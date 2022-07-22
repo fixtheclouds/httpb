@@ -20,10 +20,11 @@ func doRequest(url string) Result {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("Error while fetching")
+		fmt.Println("Failed to fetch URL")
+		return Result{}
 	}
-	defer resp.Body.Close()
 	_, readErr := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if readErr != nil {
 		fmt.Println(readErr)
 	}
