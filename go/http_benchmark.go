@@ -10,7 +10,12 @@ import (
 	"time"
 )
 
-func doRequest(url string) (time.Duration) {
+type Result struct {
+	Status string
+	Time int
+}
+
+func doRequest(url string) (Result) {
 	start := time.Now()
 
 	resp, err := http.Get(url)
@@ -26,31 +31,31 @@ func doRequest(url string) (time.Duration) {
 	end := time.Now()
 	elapsed := end.Sub(start)
 
-	s := fmt.Sprintf("Fetched in %v", elapsed.Round(time.Millisecond))
+	s := fmt.Sprintf("Fetched in %v, status: %s", elapsed.Round(time.Millisecond), resp.Status)
 	fmt.Println(s)
 
-	return elapsed
+	return Result{resp.Status, toMs(elapsed)}
 }
 
-func findMinAvgMax(results []int) (min int, avg float64, max int) {
+func findMinAvgMax(results []Result) (int, float64, int) {
 	sum := 0
-	min = results[0]
-	max = results[0]
+	min := results[0].Time
+	max := results[0].Time
 	for _, value := range results {
-		sum += value
-		if value < min {
-			min = value
+		sum += value.Time
+		if value.Time < min {
+			min = value.Time
 		}
-		if value > max {
-			max = value
+		if value.Time > max {
+			max = value.Time
 		}
 	}
-	avg = float64(sum) / float64(len(results))
+	avg := float64(sum) / float64(len(results))
 
 	return min, avg, max
 }
 
-func printResults(results []int) {
+func printResults(results []Result) {
 	min, avg, max := findMinAvgMax(results)
 	s := fmt.Sprintf("Min: %v ms\nAvg: %v ms\nMax: %v ms\nTotal requests: %d", min, avg, max, len(results))
 	fmt.Println(s)
@@ -63,7 +68,7 @@ func toMs(duration time.Duration) (int) {
 func main() {
 	url := os.Args[1]
 	c := make(chan os.Signal)
-	var results []int
+	var results []Result
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 			<-c
@@ -72,6 +77,6 @@ func main() {
 	}()
 
 	for {
-		results = append(results, toMs(doRequest(url)))
+		results = append(results, doRequest(url))
 	}
 }
