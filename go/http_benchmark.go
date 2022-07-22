@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,10 +12,10 @@ import (
 
 type Result struct {
 	Status string
-	Time int
+	Time   int
 }
 
-func doRequest(url string) (Result) {
+func doRequest(url string) Result {
 	start := time.Now()
 
 	resp, err := http.Get(url)
@@ -61,7 +61,7 @@ func printResults(results []Result) {
 	fmt.Println(s)
 }
 
-func toMs(duration time.Duration) (int) {
+func toMs(duration time.Duration) int {
 	return int(duration / time.Millisecond)
 }
 
@@ -71,9 +71,9 @@ func main() {
 	var results []Result
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
-			<-c
-			printResults(results)
-			os.Exit(1)
+		<-c
+		printResults(results)
+		os.Exit(1)
 	}()
 
 	for {
