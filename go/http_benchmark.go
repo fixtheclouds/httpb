@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -15,18 +16,17 @@ type Result struct {
 	Time   int
 }
 
-func doRequest(url string) Result {
+func doRequest(url string) (Result, error) {
 	start := time.Now()
 
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("Failed to fetch URL")
-		return Result{}
+		return Result{}, errors.New("Failed to fetch URL")
 	}
 	_, readErr := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if readErr != nil {
-		fmt.Println(readErr)
+		return Result{}, errors.New("Failed to parse body")
 	}
 
 	end := time.Now()
@@ -35,7 +35,7 @@ func doRequest(url string) Result {
 	s := fmt.Sprintf("Fetched in %v, status: %s", elapsed.Round(time.Millisecond), resp.Status)
 	fmt.Println(s)
 
-	return Result{resp.Status, toMs(elapsed)}
+	return Result{resp.Status, toMs(elapsed)}, nil
 }
 
 func findMinAvgMax(results []Result) (int, float64, int) {
@@ -56,9 +56,16 @@ func findMinAvgMax(results []Result) (int, float64, int) {
 	return min, avg, max
 }
 
-func printResults(results []Result) {
+func printResults(results []Result, failuresCount int) {
+	if len(results) == 0 {
+		fmt.Println("No successful results")
+		return
+	}
+
 	min, avg, max := findMinAvgMax(results)
-	s := fmt.Sprintf("Min: %v ms\nAvg: %v ms\nMax: %v ms\nTotal requests: %d", min, avg, max, len(results))
+	s := fmt.Sprintf("Min: %v ms\nAvg: %v ms\nMax: %v ms", min, avg, max)
+	fmt.Println(s)
+	s = fmt.Sprintf("Successful requests: %d\nFailed requests: %d", len(results), failuresCount)
 	fmt.Println(s)
 }
 
@@ -69,15 +76,22 @@ func toMs(duration time.Duration) int {
 func main() {
 	url := os.Args[1]
 	c := make(chan os.Signal)
+	failuresCount := 0
 	var results []Result
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		printResults(results)
+		printResults(results, failuresCount)
 		os.Exit(1)
 	}()
 
 	for {
-		results = append(results, doRequest(url))
+		result, error := doRequest(url)
+		if error != nil {
+			fmt.Println(error)
+			failuresCount += 1
+		} else {
+			results = append(results, result)
+		}
 	}
 }
